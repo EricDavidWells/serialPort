@@ -55,45 +55,60 @@ namespace cs_serialComs
 
             while (true)
             {
+                // define header check values, and total bytes to be read
                 byte headercheck1 = 0x9F;
                 byte headercheck2 = 0x6E;
-                int msgsize = 2;
-
-                //SerialPort sp = (SerialPort)sender;
-                //int indata = sp.ReadByte();
-                //Console.WriteLine("Data Received:");
-                //Console.WriteLine(indata);
-
+                byte footercheck1 = 0x7D;
+                byte footercheck2 = 0x8E;
+                int msgsize = 8;
+            
+                // define arrays to hold header byte checks
                 byte[] check1 = new byte[1];
                 byte[] check2 = new byte[1];
 
+                // make sure a whole message is available
                 if (sp.BytesToRead > (msgsize + 2))
                 {
+                    // check first header
                     sp.Read(check1, 0, 1);
                     if (check1[0] == headercheck1)
                     {
+                        // check second header
                         sp.Read(check2, 0, 1);
                         if (check2[0] == headercheck2)
                         {
+                            // read the data message
                             byte[] data = new byte[msgsize];
-                            int temp = sp.Read(data, 0, data.Length);
+                            int temp = sp.Read(data, 0, msgsize);
 
-                            if (temp == data.Length)
+                            //read the footer checks
+                            sp.Read(check1, 0, 1);
+                            sp.Read(check2, 0, 1);
+
+                            if (check1[0] == footercheck1 && check2[0] == footercheck2)
                             {
-                                prevtime = curtime;
-                                //curtime = sw.ElapsedMilliseconds;
-                                TimeSpan ts = sw.Elapsed;
-                                curtime = (ts.Hours * 60 * 60 * 1000 + ts.Minutes * 60 * 1000 + ts.Seconds * 1000 + ts.Milliseconds);
+                                // check that message is the anticipated size
+                                if (temp == msgsize)
+                                {
+                                    // update time parameters for debugging
+                                    prevtime = curtime;
+                                    TimeSpan ts = sw.Elapsed;
+                                    curtime = (ts.Hours * 60 * 60 * 1000 + ts.Minutes * 60 * 1000 + ts.Seconds * 1000 + ts.Milliseconds);
 
-                                Console.Write("Data Received: ");
-                                //Console.Write(System.Text.Encoding.Default.GetString(data, 0, data.Length));
-                                Console.Write(BitConverter.ToInt16(data, 0));
-                                Console.Write(" Elapsed Time (ms): ");
-                                Console.Write(curtime - prevtime);
-                                //Console.Write(" Frequency: ");
-                                //Console.Write(1000 / (curtime - prevtime));
-                                Console.WriteLine();
-                            }
+                                    Console.Write("Data Received: ");
+
+                                    // print out values recieved
+                                    for (int i = 0; i < msgsize; i += 2)
+                                    {
+                                        Console.Write(BitConverter.ToInt16(data, i));
+                                        Console.Write(",");
+                                    }
+
+                                    Console.Write(" Elapsed Time (ms): ");
+                                    Console.Write(curtime - prevtime);
+                                    Console.WriteLine();
+                                }
+                            }  
                         }
                     }
                 }
