@@ -2,7 +2,7 @@ int analogValue;
 byte headercheck1 = 0x9F; // 159
 byte headercheck2 = 0x6E; // 110
 unsigned long timer = 0;
-long loopTimeMicroSec = 10000;
+long loopTimeMicroSec = 1000;
 
 
 void setup() {
@@ -14,7 +14,6 @@ void setup() {
 void loop() {
   // Read the analog pin
   analogValue = analogRead(A0);
-  analogValue = 300;
 
   // Write bytes via serial
   writeBytes(&analogValue);
