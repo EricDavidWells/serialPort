@@ -20,25 +20,12 @@ namespace cs_serialComs
 
         static void Main(string[] args)
         {
-            //SerialPort mySerialPort = new SerialPort("COM6");
-
-            //mySerialPort.BaudRate = 115200;
-            //mySerialPort.Parity = Parity.None;
-            //mySerialPort.StopBits = StopBits.One;
-            //mySerialPort.DataBits = 8;
-            //mySerialPort.Handshake = Handshake.None;
-            //mySerialPort.ReadTimeout = -1;
-
-            //mySerialPort.DataReceived += new SerialDataReceivedEventHandler(DataReceivedHandler);
-
-            //mySerialPort.Open();
             Thread t = new Thread(new ThreadStart(serialThread));
             t.Start();
             Console.WriteLine("Press any key to continue...");
             Console.WriteLine();
             Console.ReadKey();
             t.Join();
-            //mySerialPort.Close();
         }
 
         private static void serialThread()
@@ -50,7 +37,6 @@ namespace cs_serialComs
             sp.StopBits = StopBits.One;
             sp.DataBits = 8;
             sp.Handshake = Handshake.None;
-            sp.ReadTimeout = -1;
             sp.Open();
 
             while (true)
@@ -60,59 +46,63 @@ namespace cs_serialComs
                 byte headercheck2 = 0x6E;
                 byte footercheck1 = 0x7D;
                 byte footercheck2 = 0x8E;
-                int msgsize = 8;
             
                 // define arrays to hold header byte checks
                 byte[] check1 = new byte[1];
                 byte[] check2 = new byte[1];
 
-                // make sure a whole message is available
-                if (sp.BytesToRead > (msgsize + 2))
+                // check first header
+                sp.Read(check1, 0, 1);
+                if (check1[0] == headercheck1)
                 {
-                    // check first header
-                    sp.Read(check1, 0, 1);
-                    if (check1[0] == headercheck1)
+                    // check second header
+                    sp.Read(check2, 0, 1);
+                    if (check2[0] == headercheck2)
                     {
-                        // check second header
+                        // read the message size
+                        sp.Read(check1, 0, 1);
+                        int msgsize = (int)check1[0];
+
+                        // read the data message
+                        byte[] data = new byte[msgsize];
+                        int readsizecheck = sp.Read(data, 0, msgsize);
+
+                        //read the footer checks
+                        sp.Read(check1, 0, 1);
                         sp.Read(check2, 0, 1);
-                        if (check2[0] == headercheck2)
+
+                        if (check1[0] == footercheck1 && check2[0] == footercheck2)
                         {
-                            // read the data message
-                            byte[] data = new byte[msgsize];
-                            int temp = sp.Read(data, 0, msgsize);
-
-                            //read the footer checks
-                            sp.Read(check1, 0, 1);
-                            sp.Read(check2, 0, 1);
-
-                            if (check1[0] == footercheck1 && check2[0] == footercheck2)
+                            // check that message is the anticipated size
+                            if (readsizecheck == msgsize)
                             {
-                                // check that message is the anticipated size
-                                if (temp == msgsize)
-                                {
-                                    // update time parameters for debugging
-                                    prevtime = curtime;
-                                    TimeSpan ts = sw.Elapsed;
-                                    curtime = (ts.Hours * 60 * 60 * 1000 + ts.Minutes * 60 * 1000 + ts.Seconds * 1000 + ts.Milliseconds);
-
-                                    Console.Write("Data Received: ");
-
-                                    // print out values recieved
-                                    for (int i = 0; i < msgsize; i += 2)
-                                    {
-                                        Console.Write(BitConverter.ToInt16(data, i));
-                                        Console.Write(",");
-                                    }
-
-                                    Console.Write(" Elapsed Time (ms): ");
-                                    Console.Write(curtime - prevtime);
-                                    Console.WriteLine();
-                                }
-                            }  
-                        }
+                                // Do Things
+                                DisplayText(data, msgsize);
+                            }
+                        }  
                     }
                 }
             }
+        }
+
+        private static void DisplayText(byte[] data_, int msgsize_)
+        {
+            prevtime = curtime;
+            TimeSpan ts = sw.Elapsed;
+            curtime = (ts.Hours * 60 * 60 * 1000 + ts.Minutes * 60 * 1000 + ts.Seconds * 1000 + ts.Milliseconds);
+
+            Console.Write("Data Received: ");
+
+            // print out values recieved
+            for (int i = 0; i < msgsize_; i += 2)
+            {
+                Console.Write(BitConverter.ToInt16(data_, i));
+                Console.Write(",");
+            }
+
+            Console.Write(" Elapsed Time (ms): ");
+            Console.Write(curtime - prevtime);
+            Console.WriteLine();
         }
 
         private static void DataReceivedHandler(object sender, SerialDataReceivedEventArgs e)
