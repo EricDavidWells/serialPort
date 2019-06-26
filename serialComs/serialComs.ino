@@ -2,7 +2,7 @@ int analogValue;
 byte headercheck1 = 0x9F; // 159
 byte headercheck2 = 0x6E; // 110
 unsigned long timer = 0;
-long loopTimeMicroSec = 1000;
+long loopTimeMicroSec = 5000;
 
 
 void setup() {
@@ -14,22 +14,33 @@ void setup() {
 void loop() {
   // Read the analog pin
   analogValue = analogRead(A0);
+  int data[] = {analogValue, analogValue+2, analogValue+4, analogValue+6};
 
   // Write bytes via serial
-  writeBytes(&analogValue);
+  writeBytes(data, 8);
   timeSync(loopTimeMicroSec);
 }
 
 
-void writeBytes(int* data1){
+void writeBytes(int* data_, int numdata){
   // Cast to a byte pointer
-  byte* byteData1 = (byte*)(data1);
+  byte* byteData1 = (byte*)(data_);
 
-  // Byte array with header for transmission
-  byte buf[4] = {headercheck1, headercheck2, byteData1[0], byteData1[1]};
+  // add header checks to buffer
+  byte buf[2+numdata] = {headercheck1, headercheck2};
 
-  // Write the byte
-  Serial.write(buf, 4);
+  // fill rest of buffer with two bytes per integer in data array
+  for (int i=0; i<numdata; i+=2){
+    buf[i+2] = *(byteData1+i);
+    buf[i+3] = *(byteData1+i+1);
+  }
+
+  // Write the bytes
+  Serial.write(buf, numdata+2);
+}
+
+void writeBytesArray(int* data){
+  
 }
 
 void timeSync(unsigned long deltaT){
